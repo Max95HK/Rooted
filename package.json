@@ -1,0 +1,23 @@
+{
+  "name": "rooted",
+  "version": "1.0.0",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+    "scripts": {
+    "dev": "bun --filter '*' dev",
+    "dev:fe": "bun --filter @rooted/frontend dev",
+    "dev:be": "bun --filter @rooted/backend dev",
+    "add:fe": "bun add --cwd packages/frontend",
+    "add:be": "bun add --cwd packages/backend"
+  }
+}
