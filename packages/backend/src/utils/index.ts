@@ -10,10 +10,14 @@ import type { SuccessResponse } from '@/types';
 
 export function respondSuccess<T = void>(
   c: Context,
-  message: string,
-  data?: T,
-  status: ContentfulStatusCode = 200,
+  options?: {
+    message?: string;
+    data?: T;
+    status?: ContentfulStatusCode;
+  },
 ) {
+  const { message, data, status = 200 } = options ?? {};
+
   const body =
     data === undefined
       ? { success: true, message }
@@ -32,7 +36,7 @@ export const zValidator = <
   return zv(target, schema, (result) => {
     if (!result.success) {
       throw new AppException('VALIDATION_ERROR', {
-        details: result.error.issues,
+        details: result.error.issues[0].message,
       });
     }
   });

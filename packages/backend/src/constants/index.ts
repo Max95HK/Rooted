@@ -24,3 +24,5 @@ export const ErrorMap = {
 >;
 
 export type ErrorKey = keyof typeof ErrorMap;
+
+export const JWT_EXPIRATION_SECONDS = 5 * 60;

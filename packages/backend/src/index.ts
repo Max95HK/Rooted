@@ -1,10 +1,15 @@
 /* Third-party modules */
 import { Hono } from 'hono';
 
+/* Custom modules */
+import { authRouter } from './routes/auth.route';
+
 /* Types */
 import { AppException, ErrorResponse } from '@/types';
 
 const app = new Hono();
+
+const router = app.route('/auth', authRouter);
 
 app.onError((err, c) => {
   if (err instanceof AppException) {

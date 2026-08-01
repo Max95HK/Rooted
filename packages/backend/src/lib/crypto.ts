@@ -1,10 +1,10 @@
 /* Built-in modules */
-import { randomBytes, scrypt } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 
 export const hashPassword = async (password: string) => {
   const salt = randomBytes(16).toString('hex');
   const hash = await scryptAsync(password, salt);
-  
+
   return `${salt}:${hash.toString('hex')}`;
 };
 
@@ -15,4 +15,15 @@ const scryptAsync = async (password: string, salt: string) => {
       resolve(derivedKey);
     });
   });
+};
+
+export const verifyPassword = async (
+  plainTextPassword: string,
+  storedPasswordHash: string,
+) => {
+  const [salt, storedHashHex] = storedPasswordHash.split(':');
+  const storedHashBuffer = Buffer.from(storedHashHex, 'hex');
+  const computedHashBuffer = await scryptAsync(plainTextPassword, salt);
+
+  return timingSafeEqual(storedHashBuffer, computedHashBuffer);
 };
