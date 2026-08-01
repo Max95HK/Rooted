@@ -5,7 +5,10 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.3",
+    "drizzle-kit": "^1.0.0-rc.4",
+    "tsx": "^4.23.1"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -13,11 +16,16 @@
   "workspaces": [
     "packages/*"
   ],
-    "scripts": {
+  "scripts": {
     "dev": "bun --filter '*' dev",
     "dev:fe": "bun --filter @rooted/frontend dev",
     "dev:be": "bun --filter @rooted/backend dev",
     "add:fe": "bun add --cwd packages/frontend",
-    "add:be": "bun add --cwd packages/backend"
+    "add:be": "bun add --cwd packages/backend",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down -v",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   }
 }

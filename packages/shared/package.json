@@ -1,0 +1,16 @@
+{
+  "name": "@rooted/shared",
+  "module": "types.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "types": "./types.ts",
+  "exports": {
+    ".": "./types.ts"
+  }
+}
