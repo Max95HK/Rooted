@@ -3,13 +3,14 @@ import { Hono } from 'hono';
 
 /* Custom modules */
 import { authRouter } from './routes/auth.route';
+import { apiKeysRouter } from './routes/apiKeys.route';
 
 /* Types */
 import { AppException, ErrorResponse } from '@/types';
 
 const app = new Hono();
 
-const router = app.route('/auth', authRouter);
+const router = app.route('/auth', authRouter).route('/api-keys', apiKeysRouter);
 
 app.onError((err, c) => {
   if (err instanceof AppException) {

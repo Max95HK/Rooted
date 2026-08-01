@@ -47,9 +47,11 @@ export const authRouter = new Hono()
       .returning({ id: UserTable.id, email: UserTable.email });
 
     return respondSuccess<{
-      id: string;
-      email: string;
-    }>(c, { message: 'User created.', data: user, status: 201 });
+      user: {
+        id: string;
+        email: string;
+      };
+    }>(c, { message: 'User created.', data: { user }, status: 201 });
   })
   .post('/login', zValidator('json', loginSchema), async (c) => {
     const { email, password } = c.req.valid('json');
@@ -77,7 +79,8 @@ export const authRouter = new Hono()
         email: user.email,
       },
       env.JWT_SECRET,
+      'HS256',
     );
 
-    return respondSuccess<string>(c, { data: token });
+    return respondSuccess<{ token: string }>(c, { data: { token } });
   });
