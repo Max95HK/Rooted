@@ -27,7 +27,7 @@ app.use(
   }),
 );
 
-const router = app.basePath('/api').route('/auth', authRouter);
+const router = app.basePath('/api').route('/auth', authRouter)
 
 app.onError((err, c) => {
   if (err instanceof AppException) {
@@ -59,4 +59,5 @@ app.notFound((c) => {
   return c.json(body, 404);
 });
 
+export type AppType = typeof router;
 export default app;

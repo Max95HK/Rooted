@@ -8,6 +8,7 @@ import z from 'zod';
 import { db } from '@/db';
 import { DBUser, UserTable } from '@/db/schemas';
 import { env } from '@/env';
+import authMiddleware from '@/middlewares/auth.middleware';
 
 /* Utils */
 import { issueTokens } from '@/lib/auth';
@@ -98,8 +99,25 @@ export const authRouter = new Hono()
       maxAge: env.REFRESH_TOKEN_EXPIRATION_SECONDS,
     });
 
-    return respondSuccess<{ user: Pick<DBUser, 'id' | 'email'> }>(c, {
+    return respondSuccess<{ user: Pick<DBUser, 'id' | 'name' | 'email'> }>(c, {
       message: 'User authenticated.',
       data: { user },
+    });
+  })
+  .get('/me', authMiddleware, async (c) => {
+    const { id, email } = c.get('user');
+
+    const userRecord  = await db.query.UserTable.findFirst({
+      where: { id },
+      columns: { name: true },
+    });
+
+    if (userRecord  == null) {
+      throw new AppException('USER_NOT_FOUND');
+    }
+
+    return respondSuccess<{ user: Pick<DBUser, 'id' | 'name' | 'email'> }>(c, {
+      message: 'User authenticated.',
+      data: { user: { id, name: userRecord .name, email } },
     });
   });
