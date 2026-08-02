@@ -3,6 +3,9 @@
   "module": "types.ts",
   "type": "module",
   "private": true,
+  "dependencies": {
+    "@rooted/backend": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

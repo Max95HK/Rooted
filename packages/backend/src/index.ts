@@ -1,16 +1,33 @@
 /* Third-party modules */
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
 
 /* Custom modules */
-import { authRouter } from './routes/auth.route';
-import { apiKeysRouter } from './routes/apiKeys.route';
+import { authRouter } from '@/routes/auth.route';
+import { apiKeysRouter } from '@/routes/apiKeys.route';
+import { env } from '@/env';
 
 /* Types */
-import { AppException, ErrorResponse } from '@/types';
+import { AppException, ErrorResponse, HonoEnv } from '@/types';
 
-const app = new Hono();
+const app = new Hono<HonoEnv>();
 
-const router = app.route('/auth', authRouter).route('/api-keys', apiKeysRouter);
+app.use(logger());
+
+app.use(
+  '*',
+  cors({
+    origin: env.CLIENT_URL,
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: [],
+    maxAge: 600,
+  }),
+);
+
+const router = app.basePath('/api').route('/auth', authRouter);
 
 app.onError((err, c) => {
   if (err instanceof AppException) {

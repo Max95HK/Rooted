@@ -1,12 +1,12 @@
 /* Third-party modules */
+import { zValidator as zv } from '@hono/zod-validator';
 import * as z from 'zod';
-import { zValidator as zv, Hook } from '@hono/zod-validator';
 
 /* Types */
+import type { SuccessResponse } from '@/types';
 import { AppException } from '@/types';
 import type { Context, ValidationTargets } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { SuccessResponse } from '@/types';
 
 export function respondSuccess<T = void>(
   c: Context,

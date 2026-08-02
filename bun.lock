@@ -18,6 +18,7 @@
       "name": "@rooted/backend",
       "dependencies": {
         "@hono/zod-validator": "^0.9.0",
+        "@rooted/shared": "workspace:*",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^1.0.0-rc.4",
         "hono": "^4.12.33",
@@ -33,6 +34,7 @@
       "name": "@rooted/frontend",
       "version": "0.0.0",
       "dependencies": {
+        "@rooted/shared": "workspace:*",
         "@tailwindcss/vite": "^4.3.3",
         "@tanstack/react-router": "^1.170.18",
         "@tanstack/react-router-devtools": "^1.167.0",
@@ -57,7 +59,10 @@
       },
     },
     "packages/shared": {
-      "name": "shared",
+      "name": "@rooted/shared",
+      "dependencies": {
+        "@rooted/backend": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -238,6 +243,8 @@
     "@rooted/backend": ["@rooted/backend@workspace:packages/backend"],
 
     "@rooted/frontend": ["@rooted/frontend@workspace:packages/frontend"],
+
+    "@rooted/shared": ["@rooted/shared@workspace:packages/shared"],
 
     "@tailwindcss/node": ["@tailwindcss/node@4.3.3", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "enhanced-resolve": "^5.24.1", "jiti": "^2.7.0", "lightningcss": "1.32.0", "magic-string": "^0.30.21", "source-map-js": "^1.2.1", "tailwindcss": "4.3.3" } }, "sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg=="],
 
@@ -582,8 +589,6 @@
     "seroval": ["seroval@1.6.0", "", {}, "sha512-TBwwKfscTEgnBEWmYKKeCcmCGmrJi0LV6qNUY//WBA3MDesh/zfn+KOMq/ckpxM4gZ0ouAE706A1eenekM2sug=="],
 
     "seroval-plugins": ["seroval-plugins@1.6.0", "", { "peerDependencies": { "seroval": "^1.0" } }, "sha512-CbR5DP5DPicpd9RwRUzka7hi4x1577eGFXJVBW409LXqqJNst99JSUTZ8CXcnskQX7laPOWpmzliq0gBZEGlrQ=="],
-
-    "shared": ["shared@workspace:packages/shared"],
 
     "shebang-command": ["shebang-command@2.0.0", "", { "dependencies": { "shebang-regex": "^3.0.0" } }, "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA=="],
 

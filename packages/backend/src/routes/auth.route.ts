@@ -1,25 +1,27 @@
 /* Third-party modules */
-import { Hono } from 'hono';
-import { sign } from 'hono/jwt';
 import { zValidator } from '@/utils';
+import { Hono } from 'hono';
+import { setCookie } from 'hono/cookie';
 import z from 'zod';
 
 /* Custom modules */
 import { db } from '@/db';
-import { UserTable } from '@/db/schemas';
+import { DBUser, UserTable } from '@/db/schemas';
 import { env } from '@/env';
 
 /* Utils */
+import { issueTokens } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/crypto';
 import { respondSuccess } from '@/utils';
 
 /* Constants */
-import { JWT_EXPIRATION_SECONDS } from '@/constants';
+import { COOKIE_SECURE } from '@/constants';
 
 /* Types */
 import { AppException } from '@/types';
 
 const registerSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
   email: z.email('Invalid email').min(1, 'Email is required'),
   password: z
     .string('Invalid password')
@@ -33,7 +35,7 @@ const loginSchema = z.object({
 
 export const authRouter = new Hono()
   .post('/register', zValidator('json', registerSchema), async (c) => {
-    const { email, password } = c.req.valid('json');
+    const { email, password, name } = c.req.valid('json');
     const userExists = await db.query.UserTable.findFirst({ where: { email } });
 
     if (userExists != null) {
@@ -43,15 +45,20 @@ export const authRouter = new Hono()
     const passwordHash = await hashPassword(password);
     const [user] = await db
       .insert(UserTable)
-      .values({ email, passwordHash })
-      .returning({ id: UserTable.id, email: UserTable.email });
+      .values({ name, email, passwordHash })
+      .returning({
+        id: UserTable.id,
+        name: UserTable.name,
+        email: UserTable.email,
+      });
 
     return respondSuccess<{
-      user: {
-        id: string;
-        email: string;
-      };
-    }>(c, { message: 'User created.', data: { user }, status: 201 });
+      user: Pick<DBUser, 'id' | 'name' | 'email'>;
+    }>(c, {
+      message: 'User created successfully.',
+      data: { user },
+      status: 201,
+    });
   })
   .post('/login', zValidator('json', loginSchema), async (c) => {
     const { email, password } = c.req.valid('json');
@@ -70,17 +77,29 @@ export const authRouter = new Hono()
       });
     }
 
-    const now = Math.floor(Date.now() / 1000);
+    const { accessToken, refreshToken } = await issueTokens({
+      sub: user.id,
+      email: email,
+    });
 
-    const token = await sign(
-      {
-        exp: now + JWT_EXPIRATION_SECONDS,
-        sub: user.id,
-        email: user.email,
-      },
-      env.JWT_SECRET,
-      'HS256',
-    );
+    setCookie(c, env.ACCESS_TOKEN_COOKIE_NAME, accessToken, {
+      httpOnly: true,
+      secure: COOKIE_SECURE,
+      sameSite: env.COOKIE_SAME_SITE,
+      path: '/',
+      maxAge: env.ACCESS_TOKEN_EXPIRATION_SECONDS,
+    });
 
-    return respondSuccess<{ token: string }>(c, { data: { token } });
+    setCookie(c, env.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      secure: COOKIE_SECURE,
+      sameSite: env.COOKIE_SAME_SITE,
+      path: 'api/auth/refresh-token',
+      maxAge: env.REFRESH_TOKEN_EXPIRATION_SECONDS,
+    });
+
+    return respondSuccess<{ user: Pick<DBUser, 'id' | 'email'> }>(c, {
+      message: 'User authenticated.',
+      data: { user },
+    });
   });

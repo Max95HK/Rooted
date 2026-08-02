@@ -1,8 +1,18 @@
 /* Third-party modules */
 import { HTTPException } from 'hono/http-exception';
+import z from 'zod';
 
 /* Types */
 import { ErrorKey, ErrorMap } from '@/constants';
+
+export type HonoEnv = {
+  Variables: {
+    user: {
+      id: string;
+      email: string;
+    };
+  };
+};
 
 export type SuccessResponse<T = void> = T extends void
   ? {
@@ -39,3 +49,10 @@ export class AppException extends HTTPException {
     this.details = options?.details;
   }
 }
+
+export const accessTokenPayloadSchema = z.object({
+  sub: z.string(),
+  email: z.email(),
+});
+
+export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
