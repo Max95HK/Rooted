@@ -158,5 +158,7 @@ export const authRouter = new Hono()
 
     deleteCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
 
+    // TODO: implementare il logout da tutti i dispositivi
+
     return respondSuccess(c, { message: 'User logged out successfully.' });
   });
