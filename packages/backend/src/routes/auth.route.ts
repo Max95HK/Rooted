@@ -1,12 +1,16 @@
+/* Built-in modules */
+import { createHash } from 'node:crypto';
+
 /* Third-party modules */
 import { zValidator } from '@/utils';
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import z from 'zod';
+import { and, eq, isNull } from 'drizzle-orm';
 
 /* Custom modules */
 import { db } from '@/db';
-import { DBUser, UserTable } from '@/db/schemas';
+import { DBUser, RefreshTokenTable, UserTable } from '@/db/schemas';
 import { env } from '@/env';
 import authMiddleware from '@/middlewares/auth.middleware';
 
@@ -18,9 +22,6 @@ import {
 } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/crypto';
 import { respondSuccess } from '@/utils';
-
-/* Constants */
-import { COOKIE_SECURE } from '@/constants';
 
 /* Types */
 import { AppException } from '@/types';
@@ -128,4 +129,34 @@ export const authRouter = new Hono()
     }
 
     return await handleRefreshToken(c, refreshToken);
+  })
+  .post('/logout', async (c) => {
+    const refreshToken = getCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
+
+    if (refreshToken == null) {
+      return respondSuccess(c, { message: 'User logged out successfully.' });
+    }
+
+    const refreshTokenHash = createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+
+    const refreshTokensMatch = await db.query.RefreshTokenTable.findFirst({
+      where: { refreshTokenHash },
+    });
+
+    if (refreshTokensMatch == null) {
+      return respondSuccess(c, { message: 'User logged out successfully.' });
+    }
+
+    const today = new Date();
+
+    await db
+      .update(RefreshTokenTable)
+      .set({ revokedAt: today })
+      .where(eq(RefreshTokenTable.id, refreshTokensMatch.id));
+
+    deleteCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
+
+    return respondSuccess(c, { message: 'User logged out successfully.' });
   });
