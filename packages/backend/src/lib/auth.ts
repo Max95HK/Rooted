@@ -11,11 +11,12 @@ import { RefreshTokenTable } from '@/db/schemas/refreshToken';
 import { env } from '@/env';
 
 /* Types */
-import { UserTable } from '@/db/schemas';
+import { COOKIE_SECURE } from '@/constants';
 import { AppException, type AccessTokenPayload } from '@/types';
-import { JWTPayload } from 'hono/utils/jwt/types';
 import { respondSuccess } from '@/utils';
 import { Context } from 'hono';
+import { deleteCookie, setCookie } from 'hono/cookie';
+import { JWTPayload } from 'hono/utils/jwt/types';
 
 export const generateAccessToken = async (payload: JWTPayload) => {
   const now = Math.floor(Date.now() / 1000);
@@ -54,85 +55,105 @@ export const issueTokens = async (payload: AccessTokenPayload) => {
     .insert(RefreshTokenTable)
     .values({ userId: payload.sub, refreshTokenHash, expiresAt });
 
-  return { accessToken, refreshToken, refreshTokenHash };
+  return { accessToken, refreshToken };
 };
 
-export const handleRefreshToken = async (
-  c: Context,
-  refreshToken: string,
-  userId: string,
-) => {
-  const refreshTokenHash = createHash('sha256')
-    .update(refreshToken)
-    .digest('hex');
+export const handleRefreshToken = async (c: Context, refreshToken: string) => {
+  try {
+    const refreshTokenHash = createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
 
-  const refreshTokensMatch = await db.query.RefreshTokenTable.findFirst({
-    where: { refreshTokenHash, userId },
-  });
+    const refreshTokensMatch = await db.query.RefreshTokenTable.findFirst({
+      where: { refreshTokenHash },
+    });
 
-  if (refreshTokensMatch == null) {
-    throw new AppException('INVALID_REFRESH_TOKEN');
-  }
+    if (refreshTokensMatch == null) {
+      throw new AppException('INVALID_REFRESH_TOKEN');
+    }
 
-  if (refreshTokensMatch.revokedAt != null) {
-    await db
-      .delete(RefreshTokenTable)
-      .where(
-        and(
-          eq(RefreshTokenTable.userId, refreshTokensMatch.userId),
-          isNull(RefreshTokenTable.revokedAt),
-        ),
-      );
+    const today = new Date();
 
-    throw new AppException('INVALID_REFRESH_TOKEN');
-  }
+    if (refreshTokensMatch.revokedAt != null) {
+      await db
+        .update(RefreshTokenTable)
+        .set({ revokedAt: today })
+        .where(
+          and(
+            eq(RefreshTokenTable.userId, refreshTokensMatch.userId),
+            isNull(RefreshTokenTable.revokedAt),
+          ),
+        );
 
-  const today = new Date();
+      throw new AppException('INVALID_REFRESH_TOKEN');
+    }
 
-  if (refreshTokensMatch.expiresAt < today) {
-    throw new AppException('REFRESH_TOKEN_EXPIRED');
-  }
+    if (refreshTokensMatch.expiresAt < today) {
+      throw new AppException('REFRESH_TOKEN_EXPIRED');
+    }
 
-  const result = await db
-    .select()
-    .from(UserTable)
-    .innerJoin(RefreshTokenTable, eq(UserTable.id, refreshTokensMatch.userId));
+    const user = await db.query.UserTable.findFirst({
+      where: { id: refreshTokensMatch.userId },
+      columns: {
+        id: true,
+        email: true,
+      },
+    });
 
-  const row = result[0];
-  const user = row.user;
+    if (user == null) {
+      throw new AppException('USER_NOT_FOUND');
+    }
+    const { accessToken: newAccessToken } = await generateAccessToken({
+      sub: user.id,
+      email: user.email,
+    });
 
-  const {
-    accessToken: newAccessToken,
-    refreshTokenHash: newRefreshTokenHash,
-    refreshToken: newRefreshToken,
-  } = await issueTokens({
-    sub: user.id,
-    email: user.email,
-  });
-
-  db.transaction(async (tx) => {
-    const [{ id }] = await tx
-      .insert(RefreshTokenTable)
-      .values({
-        refreshTokenHash: newRefreshTokenHash,
-        userId: user.id,
-        expiresAt: new Date(
-          today.getTime() + env.REFRESH_TOKEN_EXPIRATION_SECONDS * 1000,
-        ),
-      })
-      .returning({ id: RefreshTokenTable.id });
-
-    await tx
-      .update(RefreshTokenTable)
-      .set({ revokedAt: today, replacedByTokenId: id })
-      .where(eq(RefreshTokenTable.id, refreshTokensMatch.id));
-  });
-
-  return respondSuccess<{ accessToken: string; refreshToken: string }>(c, {
-    message: 'Refresh token updated successfully.',
-    data: {
-      accessToken: newAccessToken,
+    const {
       refreshToken: newRefreshToken,
-    },
+      refreshTokenHash: newRefreshTokenHash,
+    } = generateRefreshToken();
+
+    await db.transaction(async (tx) => {
+      const [{ id: refreshTokenId }] = await tx
+        .insert(RefreshTokenTable)
+        .values({
+          refreshTokenHash: newRefreshTokenHash,
+          userId: user.id,
+          expiresAt: new Date(
+            today.getTime() + env.REFRESH_TOKEN_EXPIRATION_SECONDS * 1000,
+          ),
+        })
+        .returning({ id: RefreshTokenTable.id });
+
+      await tx
+        .update(RefreshTokenTable)
+        .set({ revokedAt: today, replacedByTokenId: refreshTokenId })
+        .where(eq(RefreshTokenTable.id, refreshTokensMatch.id));
+    });
+
+    // TODO: Handle concurrent refresh‑token race condition
+
+    setRefreshTokenCookie(c, newRefreshToken);
+
+    return respondSuccess<{ accessToken: string }>(c, {
+      message: 'Refresh token updated successfully.',
+      data: {
+        accessToken: newAccessToken,
+      },
+    });
+  } catch (error) {
+    // Clear the cookies
+    deleteCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
+    throw error;
+  }
+};
+
+export const setRefreshTokenCookie = (c: Context, refreshToken: string) => {
+  setCookie(c, env.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: env.COOKIE_SAME_SITE,
+    path: '/api/auth/refresh-token',
+    maxAge: env.REFRESH_TOKEN_EXPIRATION_SECONDS,
   });
 };

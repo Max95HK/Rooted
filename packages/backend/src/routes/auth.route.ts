@@ -11,7 +11,11 @@ import { env } from '@/env';
 import authMiddleware from '@/middlewares/auth.middleware';
 
 /* Utils */
-import { handleRefreshToken, issueTokens } from '@/lib/auth';
+import {
+  handleRefreshToken,
+  issueTokens,
+  setRefreshTokenCookie,
+} from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/crypto';
 import { respondSuccess } from '@/utils';
 
@@ -63,7 +67,10 @@ export const authRouter = new Hono()
   })
   .post('/login', zValidator('json', loginSchema), async (c) => {
     const { email, password } = c.req.valid('json');
-    const user = await db.query.UserTable.findFirst({ where: { email } });
+    const user = await db.query.UserTable.findFirst({
+      where: { email },
+      columns: { id: true, name: true, email: true, passwordHash: true },
+    });
 
     if (user == null) {
       throw new AppException('UNAUTHORIZED', {
@@ -83,25 +90,17 @@ export const authRouter = new Hono()
       email: email,
     });
 
-    setCookie(c, env.ACCESS_TOKEN_COOKIE_NAME, accessToken, {
-      httpOnly: true,
-      secure: COOKIE_SECURE,
-      sameSite: env.COOKIE_SAME_SITE,
-      path: '/',
-      maxAge: env.ACCESS_TOKEN_EXPIRATION_SECONDS,
-    });
+    setRefreshTokenCookie(c, refreshToken);
 
-    setCookie(c, env.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
-      httpOnly: true,
-      secure: COOKIE_SECURE,
-      sameSite: env.COOKIE_SAME_SITE,
-      path: 'api/auth/refresh-token',
-      maxAge: env.REFRESH_TOKEN_EXPIRATION_SECONDS,
-    });
-
-    return respondSuccess<{ user: Pick<DBUser, 'id' | 'name' | 'email'> }>(c, {
+    return respondSuccess<{
+      user: Pick<DBUser, 'id' | 'name' | 'email'>;
+      accessToken: string;
+    }>(c, {
       message: 'User authenticated.',
-      data: { user },
+      data: {
+        user: { id: user.id, name: user.name, email: user.email },
+        accessToken,
+      },
     });
   })
   .get('/me', authMiddleware, async (c) => {
@@ -121,17 +120,12 @@ export const authRouter = new Hono()
       data: { user: { id, name: userRecord.name, email } },
     });
   })
-  .get('/refresh-token', authMiddleware, async (c) => {
-    const { id, email } = c.get('user');
+  .post('/refresh-token', async (c) => {
     const refreshToken = getCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
 
     if (refreshToken == null) {
       throw new AppException('MISSING_REFRESH_TOKEN');
     }
 
-    // Clear the cookies
-    deleteCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
-
-
-    handleRefreshToken(refreshToken, id);
+    return await handleRefreshToken(c, refreshToken);
   });
