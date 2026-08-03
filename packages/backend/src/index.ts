@@ -4,9 +4,8 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
 /* Custom modules */
-import { authRouter } from '@/routes/auth.route';
-import { apiKeysRouter } from '@/routes/apiKeys.route';
 import { env } from '@/env';
+import { authRouter } from '@/routes/auth.route';
 
 /* Types */
 import { AppException, ErrorResponse, HonoEnv } from '@/types';

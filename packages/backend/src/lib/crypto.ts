@@ -49,23 +49,3 @@ export const generateApiKey = () => {
   };
 };
 
-export const generateAccessToken = async (payload: JWTPayload) => {
-  const now = Math.floor(Date.now() / 1000);
-
-  const accessToken = await sign(
-    { ...payload, exp: now + env.ACCESS_TOKEN_EXPIRATION_SECONDS, iat: now },
-    env.JWT_SECRET,
-    'HS256',
-  );
-
-  return { accessToken };
-};
-
-export const generateRefreshToken = () => {
-  const refreshToken = randomBytes(32).toString('base64url');
-  const refreshTokenHash = createHash('sha256')
-    .update(refreshToken)
-    .digest('hex');
-
-  return { refreshToken, refreshTokenHash };
-};

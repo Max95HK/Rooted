@@ -1,7 +1,7 @@
 /* Third-party modules */
 import { zValidator } from '@/utils';
 import { Hono } from 'hono';
-import { setCookie } from 'hono/cookie';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import z from 'zod';
 
 /* Custom modules */
@@ -11,7 +11,7 @@ import { env } from '@/env';
 import authMiddleware from '@/middlewares/auth.middleware';
 
 /* Utils */
-import { issueTokens } from '@/lib/auth';
+import { handleRefreshToken, issueTokens } from '@/lib/auth';
 import { hashPassword, verifyPassword } from '@/lib/crypto';
 import { respondSuccess } from '@/utils';
 
@@ -107,17 +107,31 @@ export const authRouter = new Hono()
   .get('/me', authMiddleware, async (c) => {
     const { id, email } = c.get('user');
 
-    const userRecord  = await db.query.UserTable.findFirst({
+    const userRecord = await db.query.UserTable.findFirst({
       where: { id },
       columns: { name: true },
     });
 
-    if (userRecord  == null) {
+    if (userRecord == null) {
       throw new AppException('USER_NOT_FOUND');
     }
 
     return respondSuccess<{ user: Pick<DBUser, 'id' | 'name' | 'email'> }>(c, {
       message: 'User authenticated.',
-      data: { user: { id, name: userRecord .name, email } },
+      data: { user: { id, name: userRecord.name, email } },
     });
+  })
+  .get('/refresh-token', authMiddleware, async (c) => {
+    const { id, email } = c.get('user');
+    const refreshToken = getCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
+
+    if (refreshToken == null) {
+      throw new AppException('MISSING_REFRESH_TOKEN');
+    }
+
+    // Clear the cookies
+    deleteCookie(c, env.REFRESH_TOKEN_COOKIE_NAME);
+
+
+    handleRefreshToken(refreshToken, id);
   });

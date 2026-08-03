@@ -5,13 +5,13 @@ import { defineRelations } from 'drizzle-orm';
 import * as schemas from './schemas';
 
 export const relations = defineRelations(schemas, (relation) => ({
-  ApiKeyTable: {
-    user: relation.one.UserTable({
-      from: relation.ApiKeyTable.userId,
+  RefreshTokenTable: {
+    userId: relation.one.UserTable({
+      from: relation.RefreshTokenTable.userId,
       to: relation.UserTable.id,
     }),
   },
   UserTable: {
-    apiKeys: relation.many.ApiKeyTable(),
+    refreshToken: relation.many.RefreshTokenTable(),
   },
 }));

@@ -21,9 +21,13 @@ export const ErrorMap = {
     status: 401,
     message: 'The access token provided is invalid',
   },
-  TOKEN_EXPIRED: {
+  ACCESS_TOKEN_EXPIRED: {
     status: 401,
     message: 'The access token has expired',
+  },
+  REFRESH_TOKEN_EXPIRED: {
+    status: 401,
+    message: 'The refresh token has expired',
   },
   INVALID_REFRESH_TOKEN: {
     status: 401,

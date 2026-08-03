@@ -27,7 +27,7 @@ const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
 
   } catch (error) {
     if (error instanceof JwtTokenExpired) {
-      throw new AppException('TOKEN_EXPIRED');
+      throw new AppException('ACCESS_TOKEN_EXPIRED');
     }
 
      if (error instanceof JwtTokenInvalid || error instanceof ZodError) {
