@@ -25,7 +25,7 @@ const authMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
     const decodedPayload = await verify(accessToken, env.JWT_SECRET, 'HS256');
     const payload = accessTokenPayloadSchema.parse(decodedPayload);
 
-    c.set('user', { id: payload.sub, email: payload.email });
+    c.set('user', { id: payload.subject });
   } catch (error) {
     if (error instanceof JwtTokenExpired) {
       throw new AppException('ACCESS_TOKEN_EXPIRED');

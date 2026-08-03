@@ -9,7 +9,6 @@ export type HonoEnv = {
   Variables: {
     user: {
       id: string;
-      email: string;
     };
   };
 };
@@ -51,8 +50,7 @@ export class AppException extends HTTPException {
 }
 
 export const accessTokenPayloadSchema = z.object({
-  sub: z.string(),
-  email: z.email(),
+  subject: z.string(),
 });
 
 export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;

@@ -41,8 +41,7 @@ export const generateRefreshToken = () => {
 
 export const issueTokens = async (payload: AccessTokenPayload) => {
   const { accessToken } = await generateAccessToken({
-    sub: payload.sub,
-    email: payload.email,
+    subject: payload.subject,
   });
 
   const { refreshToken, refreshTokenHash } = generateRefreshToken();
@@ -53,7 +52,7 @@ export const issueTokens = async (payload: AccessTokenPayload) => {
 
   await db
     .insert(RefreshTokenTable)
-    .values({ userId: payload.sub, refreshTokenHash, expiresAt });
+    .values({ userId: payload.subject, refreshTokenHash, expiresAt });
 
   return { accessToken, refreshToken };
 };

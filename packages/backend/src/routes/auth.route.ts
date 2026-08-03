@@ -3,10 +3,10 @@ import { createHash } from 'node:crypto';
 
 /* Third-party modules */
 import { zValidator } from '@/utils';
+import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { deleteCookie, getCookie } from 'hono/cookie';
 import z from 'zod';
-import { and, eq, isNull } from 'drizzle-orm';
 
 /* Custom modules */
 import { db } from '@/db';
@@ -38,6 +38,9 @@ const loginSchema = z.object({
   email: z.email('Invalid email').min(1, 'Email is required'),
   password: z.string('Invalid password').min(1, 'Password is required.'),
 });
+
+// TODO: al posto di /me /users/current
+// TODO: rimuovere email dal payload dell'accessToken
 
 export const authRouter = new Hono()
   .post('/register', zValidator('json', registerSchema), async (c) => {
@@ -87,8 +90,7 @@ export const authRouter = new Hono()
     }
 
     const { accessToken, refreshToken } = await issueTokens({
-      sub: user.id,
-      email: email,
+      subject: user.id,
     });
 
     setRefreshTokenCookie(c, refreshToken);
@@ -104,12 +106,12 @@ export const authRouter = new Hono()
       },
     });
   })
-  .get('/me', authMiddleware, async (c) => {
-    const { id, email } = c.get('user');
+  .get('/users/current', authMiddleware, async (c) => {
+    const { id } = c.get('user');
 
     const userRecord = await db.query.UserTable.findFirst({
       where: { id },
-      columns: { name: true },
+      columns: { name: true, email: true },
     });
 
     if (userRecord == null) {
@@ -118,7 +120,7 @@ export const authRouter = new Hono()
 
     return respondSuccess<{ user: Pick<DBUser, 'id' | 'name' | 'email'> }>(c, {
       message: 'User authenticated.',
-      data: { user: { id, name: userRecord.name, email } },
+      data: { user: { id, name: userRecord.name, email: userRecord.email } },
     });
   })
   .post('/refresh-token', async (c) => {
